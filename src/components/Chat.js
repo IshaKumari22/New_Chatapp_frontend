@@ -8,15 +8,16 @@ function Chat() {
   const token = localStorage.getItem("token");
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  const {threadId}=useParams();
 
   useEffect(() => {
     fetchMessages();
-  }, []);
+  }, [threadId]);
 
   const fetchMessages = async () => {
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/thread/${userId}/messages/`,
+        `http://127.0.0.1:8000/api/messages/?thread=${threadId}`,
         { headers: { Authorization: `Token ${token}` } }
       );
       const data = await res.json();
@@ -29,18 +30,18 @@ function Chat() {
   const handleSend = async () => {
     if (!text) return;
     try {
-      await fetch(`http://127.0.0.1:8000/thread/${userId}/messages/`, {
+      await fetch(`http://127.0.0.1:8000/api/messages/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Token ${token}`,
         },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify({thread:threadId, content: text }),
       });
       setText("");
       fetchMessages(); // refresh
     } catch (err) {
-      console.error(err);
+      console.error("Failed to send message",err);
     }
   };
 
