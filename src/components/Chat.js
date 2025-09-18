@@ -4,7 +4,6 @@ import { useParams, useLocation } from "react-router-dom";
 function Chat() {
   const { state } = useLocation();
   const { username } = state; // selected user
-  const { userId } = useParams();
   const token = localStorage.getItem("token");
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -17,7 +16,7 @@ function Chat() {
   const fetchMessages = async () => {
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/api/messages/?thread=${threadId}`,
+        `http://127.0.0.1:8000/thread/${threadId}/messages`,
         { headers: { Authorization: `Token ${token}` } }
       );
       const data = await res.json();
@@ -30,7 +29,7 @@ function Chat() {
   const handleSend = async () => {
     if (!text) return;
     try {
-      await fetch(`http://127.0.0.1:8000/api/messages/`, {
+      await fetch(`http://127.0.0.1:8000/thread/${threadId}/messages/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
