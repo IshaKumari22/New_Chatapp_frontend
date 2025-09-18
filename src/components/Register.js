@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 function Register() {
   const [username, setUsername] = useState("");
@@ -8,6 +9,12 @@ function Register() {
   const [message, setMessage] = useState(""); // success/error message
   const [messageType, setMessageType] = useState(""); // "success" or "error"
   const navigate = useNavigate();
+
+    useEffect(() => {
+    setUsername("");
+    setEmail("");
+    setPassword("");
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,6 +47,12 @@ function Register() {
             : "❌ Registration failed.";
         setMessage(`❌ ${errorMsg}`);
         setMessageType("error");
+
+
+
+        setUsername("");
+        setEmail("");
+        setPassword("");
       }
     } catch (err) {
       setMessage("❌ Server error. Please try again later.");
@@ -96,7 +109,7 @@ function Register() {
                 className="form-control"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete="off"
+                autoComplete="new-password"
                 required
               />
             </div>
