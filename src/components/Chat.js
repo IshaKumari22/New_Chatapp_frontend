@@ -16,7 +16,7 @@ function Chat() {
   const fetchMessages = async () => {
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/thread/${threadId}/messages`,
+        `http://127.0.0.1:8000/thread/${threadId}/messages/`,
         { headers: { Authorization: `Token ${token}` } }
       );
       const data = await res.json();
@@ -29,7 +29,7 @@ function Chat() {
   const handleSend = async () => {
     if (!text) return;
     try {
-      await fetch(`http://127.0.0.1:8000/thread/${threadId}/messages/`, {
+      const res=await fetch(`http://127.0.0.1:8000/thread/${threadId}/messages/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -37,12 +37,20 @@ function Chat() {
         },
         body: JSON.stringify({thread:threadId, content: text }),
       });
-      setText("");
-      fetchMessages(); // refresh
+      const data=await res.json();
+      if(res.ok){
+        setMessages((prev)=>[...prev,data]);
+        setText("");
+      }
+    
     } catch (err) {
       console.error("Failed to send message",err);
     }
   };
+  useEffect(()=>{
+    const interval=setInterval(fetchMessages,3000);
+    return ()=>clearInterval(interval);
+  },[]);
 
   return (
     <div className="container mt-4">
