@@ -175,8 +175,8 @@ function Chat() {
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`mb-2 p-2 rounded ${
-              msg.sender.username === username ? "bg-primary text-white text-end" : msg.sender.username==="AI" ?"bg-warning text-dark":"bg-light text-start"
+            className={`mb-2 ${
+              msg.sender.username === username ? "text-end" : "text-start"
             }`}
           >
             <b>{msg.sender.username}:</b> {msg.content}
