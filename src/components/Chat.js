@@ -91,6 +91,130 @@
 // }
 
 // export default Chat;
+
+
+
+
+
+// import React, { useEffect, useState, useRef } from "react";
+// import { useParams, useLocation } from "react-router-dom";
+
+// function Chat() {
+//   const { state } = useLocation();
+//   const { username } = state; // logged-in user
+//   const token = localStorage.getItem("token");
+//   const { threadId } = useParams();
+//   const [messages, setMessages] = useState([]);
+//   const [text, setText] = useState("");
+//   const socketRef = useRef(null);
+//   const chatDivRef = useRef(null);
+
+//   // 1️⃣ Load old messages from REST API
+//   useEffect(() => {
+//     const fetchMessages = async () => {
+//       try {
+//         const res = await fetch(
+//           `http://127.0.0.1:8000/thread/${threadId}/messages/`,
+//           { headers: { Authorization: `Token ${token}` } }
+//         );
+//         const data = await res.json();
+//         // Ensure messages are in order: oldest → newest
+//         data.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+//         setMessages(data);
+//       } catch (err) {
+//         console.error("Failed to fetch messages", err);
+//       }
+//     };
+
+//     fetchMessages();
+//   }, [threadId, token]);
+
+//   // 2️⃣ WebSocket connection
+//   useEffect(() => {
+//     const wsUrl = `ws://127.0.0.1:8000/ws/chat/${threadId}/`;
+//     socketRef.current = new WebSocket(wsUrl);
+
+//     socketRef.current.onopen = () => console.log("WebSocket connected!");
+
+//     socketRef.current.onmessage = (e) => {
+//       const data = JSON.parse(e.data);
+//       setMessages((prev) => {
+//         // Avoid duplicate messages
+//         if (prev.some(m => m.sender.username === data.sender && m.content === data.message)) {
+//           return prev;
+//         }
+//         return [...prev, { sender: { username: data.sender }, content: data.message }];
+//       });
+//     };
+
+//     socketRef.current.onclose = () => console.log("WebSocket closed");
+
+//     return () => socketRef.current.close();
+//   }, [threadId]);
+
+//   // 3️⃣ Send message via WebSocket
+//   const handleSend = () => {
+//     if (!text.trim()) return;
+//     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+//       socketRef.current.send(JSON.stringify({ message: text, sender: username }));
+//       setText(""); // Do not add locally; wait for WebSocket broadcast
+//     }
+//   };
+
+//   // 4️⃣ Auto-scroll to latest message
+//   useEffect(() => {
+//     if (chatDivRef.current) {
+//       chatDivRef.current.scrollTop = chatDivRef.current.scrollHeight;
+//     }
+//   }, [messages]);
+
+//   return (
+//     <div className="container mt-4">
+//       <h3>Chat with {username}</h3>
+
+//       <div
+//         ref={chatDivRef}
+//         className="border p-3 mb-3"
+//         style={{ height: "300px", overflowY: "scroll" }}
+//       >
+//         {messages.map((msg, idx) => (
+//           <div
+//             key={idx}
+//             className={`mb-2 ${
+//               msg.sender.username === username ? "text-end" : "text-start"
+//             }`}
+//           >
+//             <b>{msg.sender.username}:</b> {msg.content}
+//           </div>
+//         ))}
+//       </div>
+
+//       <div className="d-flex">
+//         <input
+//           className="form-control me-2"
+//           value={text}
+//           onChange={(e) => setText(e.target.value)}
+//           onKeyDown={(e) => e.key === "Enter" && handleSend()}
+//         />
+//         <button className="btn btn-dark" onClick={handleSend}>
+//           Send
+//         </button>
+//       </div>
+//     </div>
+//   );
+// }
+
+// export default Chat;
+
+
+
+
+
+
+
+
+
+
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useLocation } from "react-router-dom";
 
@@ -104,8 +228,9 @@ function Chat() {
   const socketRef = useRef(null);
   const chatDivRef = useRef(null);
 
-  // 1️⃣ Load old messages from REST API
+  // 1️⃣ Load old messages (for user-to-user chat)
   useEffect(() => {
+    if (threadId === "ai") return; // skip for AI chat
     const fetchMessages = async () => {
       try {
         const res = await fetch(
@@ -113,7 +238,6 @@ function Chat() {
           { headers: { Authorization: `Token ${token}` } }
         );
         const data = await res.json();
-        // Ensure messages are in order: oldest → newest
         data.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         setMessages(data);
       } catch (err) {
@@ -124,8 +248,9 @@ function Chat() {
     fetchMessages();
   }, [threadId, token]);
 
-  // 2️⃣ WebSocket connection
+  // 2️⃣ WebSocket connection for normal chat
   useEffect(() => {
+    if (threadId === "ai") return; // no WebSocket needed for AI
     const wsUrl = `ws://127.0.0.1:8000/ws/chat/${threadId}/`;
     socketRef.current = new WebSocket(wsUrl);
 
@@ -134,29 +259,73 @@ function Chat() {
     socketRef.current.onmessage = (e) => {
       const data = JSON.parse(e.data);
       setMessages((prev) => {
-        // Avoid duplicate messages
-        if (prev.some(m => m.sender.username === data.sender && m.content === data.message)) {
+        // Avoid duplicates
+        if (
+          prev.some(
+            (m) =>
+              m.sender.username === data.sender &&
+              m.content === data.message
+          )
+        ) {
           return prev;
         }
-        return [...prev, { sender: { username: data.sender }, content: data.message }];
+        return [
+          ...prev,
+          { sender: { username: data.sender }, content: data.message },
+        ];
       });
     };
 
     socketRef.current.onclose = () => console.log("WebSocket closed");
 
-    return () => socketRef.current.close();
+    return () => socketRef.current?.close();
   }, [threadId]);
 
-  // 3️⃣ Send message via WebSocket
-  const handleSend = () => {
+  // 3️⃣ Send message (WebSocket or TinyLLaMA)
+  const handleSend = async () => {
     if (!text.trim()) return;
+
+    // --- AI Chat Mode ---
+    if (threadId === "ai") {
+      const userMsg = { sender: { username }, content: text };
+      setMessages((prev) => [...prev, userMsg]);
+      setText("");
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/generate/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: text }),
+        });
+        const data = await res.json();
+        const aiMsg = {
+          sender: { username: "TinyLLaMA 🤖" },
+          content: data.response || "(no reply)",
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+      } catch (err) {
+        console.error("AI Error:", err);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: { username: "System" },
+            content: "⚠️ Could not reach TinyLLaMA backend.",
+          },
+        ]);
+      }
+      return;
+    }
+
+    // --- Normal Chat Mode ---
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ message: text, sender: username }));
-      setText(""); // Do not add locally; wait for WebSocket broadcast
+      socketRef.current.send(
+        JSON.stringify({ message: text, sender: username })
+      );
+      setText(""); // clear input
     }
   };
 
-  // 4️⃣ Auto-scroll to latest message
+  // 4️⃣ Auto-scroll
   useEffect(() => {
     if (chatDivRef.current) {
       chatDivRef.current.scrollTop = chatDivRef.current.scrollHeight;
@@ -165,12 +334,16 @@ function Chat() {
 
   return (
     <div className="container mt-4">
-      <h3>Chat with {username}</h3>
+      <h3>
+        {threadId === "ai"
+          ? "💬 Chat with TinyLLaMA 🤖"
+          : `Chat with Thread ${threadId}`}
+      </h3>
 
       <div
         ref={chatDivRef}
         className="border p-3 mb-3"
-        style={{ height: "300px", overflowY: "scroll" }}
+        style={{ height: "300px", overflowY: "auto", background: "#fafafa" }}
       >
         {messages.map((msg, idx) => (
           <div
@@ -187,6 +360,7 @@ function Chat() {
       <div className="d-flex">
         <input
           className="form-control me-2"
+          placeholder="Type a message..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
