@@ -81,9 +81,9 @@ function UserList() {
       <h4 className="mb-3">Chat with AI</h4>
       <div className="card shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
         <div>
-          <span style={{ fontSize: "1.2rem" }}>🤖 TinyLLaMA Assistant</span>
+          <span style={{ fontSize: "1.2rem" }}>🤖 LLaMA Assistant</span>
           <p className="mb-0 text-muted" style={{ fontSize: "0.9rem" }}>
-            Talk to your local AI model powered by TinyLLaMA.
+            Talk to your local AI model powered by LLaMA.
           </p>
         </div>
         <button className="btn btn-success btn-sm" onClick={startAIChat}>
